@@ -34,10 +34,11 @@ int main()
 	float x = 42;
 
 	/* drunk, fix later */
+loop_start:
 	while (ago < 0x2a) {
 		printf("http://stackoverflow.com/questions/184618/what-is-the-best-comment-in-source-code-you-have-ever-encountered\n");
 		ago++;
-		continue; /* TODO: use goto for Pete's sake! */
+		goto loop_start;
 		printf("Fast inverse square root: %f\n", Q_rsqrt(x)); /* i'm sorry */
 	}
 
