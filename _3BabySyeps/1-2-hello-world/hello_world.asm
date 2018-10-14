@@ -16,6 +16,10 @@ CMAIN:
 print:
     PRINT_STRING myString
     NEWLINE
+    sub ecx,1
+    test ecx, ecx
+    jnz print
+    
     PRINT_STRING goodbye
     NEWLINE
                                ; TODO2.2: afisati "Hello, World!" de N ori
