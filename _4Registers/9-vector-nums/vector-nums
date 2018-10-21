@@ -1,0 +1,41 @@
+%include "io.inc"
+
+%define ARRAY_SIZE    10
+
+section .data
+    byte_array db -8, -19, 12, -3, -6, -20, -125, 19, 78, 102
+    print_negative db "Negative numbers: ", 0
+    print_positive db "Positive numbers: ", 0
+
+    
+
+section .text
+global CMAIN
+CMAIN:
+    push ebp
+    mov ebp, esp
+
+    mov ecx, ARRAY_SIZE     ; Use ecx as loop counter.
+    xor eax, eax            ; hold the negative numbers
+    xor edx, edx            ; hold the positive numbers
+
+loop_label:
+    mov dl, byte [byte_array + ecx - 1]
+    cmp dl,0
+    jg positive
+    inc eax
+    dec ebx
+positive:
+    inc ebx
+    loop loop_label
+
+    PRINT_STRING print_positive
+    PRINT_UDEC 4, ebx
+    NEWLINE
+    
+    PRINT_STRING print_negative
+    PRINT_UDEC 4, eax
+    NEWLINE
+    
+    leave
+    ret
