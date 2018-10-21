@@ -4,8 +4,12 @@
 
 section .data
     byte_array db -8, -19, 12, -3, -6, -20, -125, 19, 78, 102
+    byte_positive_array db 8, 19, 12, 3, 6, 20, 125, 19, 78, 102
+
     print_negative db "Negative numbers: ", 0
     print_positive db "Positive numbers: ", 0
+    print_even db "Even numbers: ", 0
+    print_odd db "Odd numbers: ", 0
 
     
 
@@ -17,7 +21,7 @@ CMAIN:
 
     mov ecx, ARRAY_SIZE     ; Use ecx as loop counter.
     xor eax, eax            ; hold the negative numbers
-    xor edx, edx            ; hold the positive numbers
+    xor ebx, ebx            ; hold the positive numbers
 
 loop_label:
     mov dl, byte [byte_array + ecx - 1]
@@ -35,6 +39,30 @@ positive:
     
     PRINT_STRING print_negative
     PRINT_UDEC 4, eax
+    NEWLINE
+    
+    mov ecx, ARRAY_SIZE     ; Use ecx as loop counter.
+    xor esi, esi            ; hold the odd numbers
+    xor edi, edi            ; hold the even numbers
+    mov bl, 2
+
+loop_bapositive:
+    mov al, byte [byte_array + ecx - 1]
+    div bl
+    cmp ah,0
+    jz even
+    inc esi
+    dec edi
+even:
+    inc edi
+    loop loop_bapositive
+
+    PRINT_STRING print_even
+    PRINT_UDEC 4, edi
+    NEWLINE
+    
+    PRINT_STRING print_odd
+    PRINT_UDEC 4, esi
     NEWLINE
     
     leave
