@@ -46,9 +46,9 @@ match:
     PRINT_UDEC 1, dl
     NEWLINE
 mismatch:
-    sub si, ax      ;reset si from where is started
+    sub si, ax      ;reset si from where it started
     add si, cx      ;(before cmpsb) with si -= al - cl
-    inc si          ;add 1 so we verify it form next char
+    inc si          ;add 1 so we verify it from next char
     dec dl          ;always dec dl 1 since we inc si with 1
     test dl, dl
     jnz again
