@@ -4,7 +4,7 @@ extern printf
 section .data
     before_format db "before %s", 13, 10, 0
     after_format db "after %s", 13, 10, 0
-    mystring db "abcCDEFG;*&^%$#efghij", 0
+    mystring db "ana are batoane de mere", 0
 
 section .text
 global CMAIN
@@ -24,6 +24,10 @@ again:
     cmp dl, 'z'
     jg do_it_again
     add dl,13
+    cmp dl, 'z'
+    jbe fine
+    sub dl, 26
+fine:
     mov byte[eax+ecx], dl
 do_it_again:
     inc ecx
