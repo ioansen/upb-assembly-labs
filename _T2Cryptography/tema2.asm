@@ -83,33 +83,10 @@ rolling_xor:
         inc edi                 ;skip first block (no cyphering)
         dec ecx
 
-        push edx
-        push ecx
-        push ecx
-        push print_format
-        call printf
-        add esp, 8
-        pop ecx
-        pop edx
 do_the_rolling:
-        push ecx
-        push edx
-        push dword[edi]
-        push print_format
-        call printf
-        add esp, 8
-        pop edx
         xor byte[edi], dl
         mov dl, byte[edi]
-        push edx
         inc edi
-        push edx
-        push print_format
-        call printf
-        add esp, 8
-        pop edx
-        pop ecx
-
         loop do_the_rolling
         
         pop eax
@@ -236,32 +213,7 @@ task2:
         call rolling_xor
         add esp,4
         
-        mov ecx, eax
-        pop ebx
-
-        push ebx
-        push ecx
-        push ecx
-        push print_format
-        call printf
-        add esp, 8
-        pop ecx
-        pop ebx
-loopbytes:
-        push ebx
-        push ecx
-        xor edx, edx
-        mov dl, byte[ebx]
-        push edx
-        push print
-        call printf
-        add esp,8
-        pop ecx
-        pop ebx
-        inc ebx
-        loop loopbytes
                                     ;ecx already on stack
-        push ebx
         call puts
         add esp, 4
 
