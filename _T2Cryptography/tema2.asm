@@ -17,7 +17,6 @@ error_cannot_read: db "Error: Cannot read input file %s", 10, 0
 print_format: db "some %x",10,0
 print: db "%x ", 0
 print_newline: db 10,0
-base32_alphapet: db "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567="
 section .text
 global main
 
@@ -289,8 +288,13 @@ xor_hex_strings:
         ret
         
 ;-----------------------------------------------------------------
-;void base32decode(*string);    i am encoding binary --> text
-;----------------------------------------------------------------
+;void base32decode(*string);
+;-----------------------------------------------------------------
+;take 8 characters (bytes) and transform them in 5 bytes
+;for the first 6 characters just add them with << 5 to some 32 bit register
+;then << with 2 and fill it with top 2 form 7th
+;last byte just take remainng 3 bits from 7th + 5 from 8th
+;-----------------------------------------------------------------
 base32decode:
                                 ;TODO TASK 4
         enter 0, 0
@@ -298,89 +302,111 @@ base32decode:
         push esi
         push ebx
         
-        mov esi, [ebp + 8]
+        mov esi, [ebp + 8]    ;string address in esi
+        mov edi, esi          ;string address also in edi, for quick storing
         
         push esi
-        call strlen             ;length in eax
+        ;call print_contents
+        call strlen           ;length in eax
         add esp, 4
-        
-        mov ecx, eax
-        mov ebx, base32_alphapet
-        mov edi, ecx            ;save length also here, to create another address
-        inc edi
 
-compute_next_5:
+        mov edx, eax          ;string length in edx
         xor eax, eax
-        mov edx, dword[esi]
-        mov dl, byte[esi]
-        
-        push ecx
-        mov ecx, 6
-first_4_bytes:             
-        mov al, dl              
-        and al, 0x1F            ;discard upper 3 bits
-        xlat
-        push eax
-        shr edx, 5
-        loop first_4_bytes
-        add esi, 4     
-                                
-                                ;need to compute last byte               
-        xor cx, cx
-        mov cl, byte[esi]       
-        shl cx, 2
-        xor dx, cx
+        xor ecx, ecx
 
-        mov al, dl              
-        and al, 0x1F            ;discard upper 3 bits
-        xlat
-        push eax
-        shr edx, 5
-        mov al, dl              
-        and al, 0x1F            ;discard upper 3 bits
-        xlat
-        push eax
-        shr edx, 5
         
-put_them_in:
-        sub esi,4
-        pop eax
-        mov edi, 6
-retrieve: 
-        shl eax,6
-        pop edx
-        or eax, edx
-        dec edi
-        cmp edi, 0
-        jb retrieve       
+;-------------process 8 bytes at a time---------------         
+do_8:   
+        xor ebx, ebx          ;append bits to ebx
+        mov ecx, 6            ;do the first 6 just by adding to eax
 
-        pop edx
-        mov edi, edx
-        xor edx, edx
-        shl dl, 3
-        shr dl, 8
-        shl eax, 2
-        or eax, edx
-        mov dword[esi], eax
-        xor eax, eax
-        shl al, 5
-        shr al, 8
-        shl al, 8
-        pop edx
-        or eax, edx
-        mov byte[esi+4], al
-               
-        pop ecx
-        sub ecx, 5
-        cmp ecx, 0
-        jg compute_next_5
+;--------------------first 6--------------------
+do_6:
+        lodsb               ;load from string in al
+        cmp al, '='
+        jz padding
+        cmp al, 'A'
+        jb digit
+        cmp al, 'Z'
+        jg digit
+        sub al, 'A'         ;transform by base32 table, if in [A-Z] sub 0x41('A')
+        jmp skip
+padding:
+        xor al, al          ;in case of padding just append 0s? not 100% sure but works with the input in the homework
+        jmp skip
+
+digit:        
+        sub al, 0x18         ;transform by base32 table, if in [2-7] sub 0x18
+       
+skip:
+        shl ebx, 5          ;shift so we make room for next 5
+        or ebx, eax         ;append bits at the end of ebx
+        loop do_6
+                            ;now ebx holds the first 30 bits of the 40 (5 bytes)
+
+;----------------------7th-----------------------
+        lodsb               ;load next byte ( the 7th)
+        shl ebx,2           ;make room for last 2 bits (of 32)
+        cmp al, '='
+        jz padding_7th
+        cmp al, 'A'        
+        jb digit_7th
+        cmp al, 'Z'
+        jg digit_7th
+        sub al, 'A'         ;transform by base32 table, if in [A-Z] sub 0x41('A')
+        jmp skip_7th
+padding_7th:
+        xor al, al          ;in case of padding just add 0s
+        jmp skip_7th 
+digit_7th:        
+        sub al, 0x18        ;transform by base32 table, if in [2-7] sub 0x18
+skip_7th:
+            
+        mov cl, al          ;add first 2 bits of al in ecx
+        shr cl, 3
+        or ebx, ecx         ;now ebx is complete and holds first 4 bytes
         
-        not ecx                 ;attempt c2
-        inc ecx        
+        mov ecx, 3          ;insert bytes in edi from ebx in reverse order
+insert_first_4:
+        mov byte[edi+ecx],bl
+        shr ebx, 8
+        loop insert_first_4
         
-add_padding:
-        loop add_padding
-                
+        mov byte[edi], bl   ;the loop only inserts 3 so we insert last one manually
+        add edi, 4          ;increment address with 4
+                        
+        mov bl, al          ;move 7th byte in bl 
+        shl bl, 5           ;make room for last 5 bits of the 8th byte
+                            ;also discards the previously appended bits from al (the 2 inserted before)
+
+;----------------------8th-----------------------
+
+        lodsb               ;load the last one(8th)
+        cmp al, '='
+        jz padding_8th
+        cmp al, 'A'
+        jb digit_8th
+        cmp al, 'Z'
+        jg digit_8th
+        sub al, 'A'         ;transform by base32 table, if in [A-Z] sub 0x41('A')
+        jmp skip_8th
+padding_8th:
+        xor al, al          ;if padding just add 0s
+        jmp skip_8th        
+digit_8th:        
+        sub al, 0x18        ;transform by base32 table, if in [2-7] sub 0x18
+skip_8th:
+        or al, bl           ;append first 3 bytes to al
+        stosb               ;store last byte to edi
+        
+        sub edx, 5
+        cmp edx, 0
+        jg do_8
+
+
+decode32_over:
+        mov byte[edi], 0    ;set terminator
+                                  
         pop ebx
         pop esi
         leave
@@ -709,8 +735,9 @@ task4:
         ; TASK 4: decoding a base32-encoded string
     
         ; TODO TASK 4: call the base32decode function
-        
         push ecx
+        call base32decode
+                                     ;ecx already on stack   
         call puts                    ;print resulting string
         add esp,4
         

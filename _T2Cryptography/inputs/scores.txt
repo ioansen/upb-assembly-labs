@@ -1,0 +1,6 @@
+1 input1.dat output1-sha 10
+2 input2.dat output2-sha 10
+3 input3.dat output3-sha 10
+4 input4.dat output4-sha 20
+5 input5.dat output5-sha 10
+6 input6.dat output6-sha 20

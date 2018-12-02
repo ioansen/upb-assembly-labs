@@ -1,0 +1,7 @@
+Checker tema 2 IOCLA
+
+Checkerul presupune existenta in directorul curent a urmatoarelor fisiere:
+	- tema2 - executabilul temei
+	- inputs/scores.txt - fisier cu structura "task input output score"
+		* fisierul de input se va cauta in folderul inputs/
+		* fisierul de output se va cauta in folderul outputs-sha/
