@@ -411,10 +411,7 @@ bruteforce_singlebyte_xor:
         add esp, 4
         
         mov ecx, eax                ;string length in ecx
-        
-        ;sub esp, ecx                ;reserve space on stack for key
-        ;mov edi, esp
-        
+                
         sub esp, 6                  ;leave space to also put 'force' on stack ('force' should be param so we could mass use this method/procedure)
         mov byte[esp], 'f'
         mov byte[esp + 1], 'o'
@@ -424,71 +421,47 @@ bruteforce_singlebyte_xor:
         mov byte[esp + 5], 0
         mov ebx, esp                ;'force' address in ebx, ebx saved by procedures so we won't have to push it everytime
         
-        ;push ecx                    ;push length so we can restore stack later
         
         
         mov dl, 0xff                ;generate 255, the first tested key
         
 do_the_bruteforce:           
-        push edx                    ;save loop counter (and the key )
-        push ecx                    ;save the string length
-        
-        ;push edi
-        ;mov al, dl                  ;multiply key with stosb, store byte in al
-        ;rep stosb                   ;repeat ecx time
-        ;mov byte[edi], 0            ;set string terminator
-        ;pop edi                     ;get edi back from rep stosb        
-        ;pop ecx                     ;get ecx back from rep stosb
+        push ecx                    ;save registers use by xor_string
+        push esi        
 
-        ;push ecx                    ;push the registers affected by xor_them
-        ;push edi
-        push esi
-        
-xor_them:                           ;xor them like in xor_strings
-                                    ;can't use xor_strings procedure
-                                    ;because i want to xor them precisely ecx times (the original strlen)
-                                    ;and not the temp strlen times
-                                    ;since i need to revert this operation
-        ;mov dl, byte[edi]
+xor_string:                         ;xor string with key byte like
         xor byte[esi], dl 
-        ;inc edi
         inc esi      
-        loop xor_them
+        loop xor_string
         
-        pop esi                     ;get back registers used by xor_them
-        ;pop edi
+        pop esi                     ;get back registers used by xor_string
         pop ecx
-        ;pop edx                     ;including edx
         
-        ;push edx                    ;push registers before contains
-        push ecx                                                  
+        push edx                    ;save registers before contains
+        push ecx                                               
         
         push esi                    
         push ebx
         call contains               ;eax contains boolean (0 if not found)
         add esp, 8
         
-        pop ecx                     ;get back registers before contains
-        pop edx
+        pop ecx                     ;get back registers from before contains
+        pop edx                     
 
         test eax, eax               ;test if contains == true
         jnz found
         
-        push edx                    ;push registers used by xor_the_back
+        push edx                    ;push registers used by xor_string_back
         push ecx
-        ;push edi
         push esi
-        
-xor_them_back:                      ;revert xor_them operation
+                
+xor_string_back:                    ;revert xor_string operation
                                     ;so we start next iteration with the initial string
-        ;mov dl, byte[edi]
         xor byte[esi], dl 
-        ;inc edi
         inc esi      
-        loop xor_them_back
+        loop xor_string_back
          
-        pop esi                     ;get back registers used by xor_the_back
-        ;pop edi
+        pop esi                     ;get back registers used by xor_string_back
         pop ecx             
         pop edx
         
@@ -497,11 +470,7 @@ xor_them_back:                      ;revert xor_them operation
         jnz do_the_bruteforce
         
 found:
-        ;pop ecx                      ;get string length and redo stack
-        add esp, 6                   ;restore 'force' space
-        ;add esp, ecx                 ;restore generated key sapce
-        ;inc esp
-        
+        add esp, 6                   ;restore 'force' space        
         mov al,dl                    ;put key in al i.e return key
         pop ebx                      ;restore edi, esi, ebx
         pop edi                      
