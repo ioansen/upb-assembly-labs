@@ -40,8 +40,8 @@ print_contents:
                 
         test eax, eax
         jz out_print
-        
-        mov ecx, eax
+                
+        mov ecx, eax            ;string length in ecx
                 
 do_the_print:
         push ecx
@@ -129,7 +129,7 @@ contains:
         enter 0,0
         
         push ebx                    ;save the register we use
-        push esi                    ;so we can restore
+        push esi                    
         push edi
         
         mov edi, [ebp + 8]          ;the string we're looking for  
@@ -152,7 +152,8 @@ contains:
         
         pop edx                     ;string length in edx 
         
-do_the_iteration:
+do_the_iteration:                   ;bruteforce search string 
+                                    ;each iteration increments esi with 1 and compares from there
         push esi
         mov edi, ebx                ;move edi back to substring address        
         xor ecx, ecx
@@ -165,12 +166,12 @@ match:
         jmp contains_out
 mismatch:
         pop esi                     ;get start adress back
-        inc esi                     ;add 1 so newxt we verify it from next char              
+        inc esi                     ;add 1 so we verify it from next char             
         dec dl                      ;always dec dl 1 since we inc esi with 1
         test dl, dl
         jnz do_the_iteration
         
-        xor eax, eax                ;return 0 if mismatch
+        xor eax, eax                ;return 0 if substring not found
 
 contains_out:       
         pop edi                     ;restore used registers
@@ -189,10 +190,10 @@ get_key_address:
         
                                 ;assume cld
         xor eax, eax            ;mov ax, 0
-        mov ecx, 50             ;scan 50 bytes
+        mov ecx, 50             ;scan max 50 bytes
         repne scasb             
         
-        mov eax, edi
+        mov eax, edi            ;return address found after 0
         leave
         ret
 
@@ -206,7 +207,7 @@ xor_strings:
         push ebp
         mov ebp, esp
         
-        push esi                ;save them before using them
+        push esi                ;save used registers
         push edi
         
         mov esi, [ebp + 8]      ;the key
@@ -216,7 +217,7 @@ xor_strings:
         call strlen             ;length in eax
         add esp, 4
                                     
-        mov ecx, eax
+        mov ecx, eax            ;string length in ecx
 
 do_the_xor:
         mov dl, byte[esi]
@@ -231,7 +232,7 @@ do_the_xor:
         ret
 
 ;--------------------------------
-;int rolling_xor(*string);
+;void rolling_xor(*string);
 ;--------------------------------
 rolling_xor:
                                 ;TODO TASK 2
@@ -244,10 +245,9 @@ rolling_xor:
         call strlen             ;length in eax
         add esp, 4
         
-        push eax
-        mov ecx, eax
+        mov ecx, eax            ;string length in ecx
         dec ecx                 ;skip first one
-        add esi, ecx
+        add esi, ecx            ;move to last byte
        
 do_the_rolling:
         mov al, byte[esi - 1]
@@ -255,7 +255,6 @@ do_the_rolling:
         dec esi
         loop do_the_rolling
         
-        pop eax                 ;return length
         pop esi
         leave
         ret
@@ -267,7 +266,7 @@ xor_hex_strings:
                                 ;TODO TASK 3
         enter 0,0
         
-        push edi                ;we're using them so save them
+        push edi                ;saved used registers
         push esi       
         
         mov esi, [ebp + 8]      ;the key
@@ -420,16 +419,14 @@ bruteforce_singlebyte_xor:
         mov byte[esp + 4], 'e'
         mov byte[esp + 5], 0
         mov ebx, esp                ;'force' address in ebx, ebx saved by procedures so we won't have to push it everytime
-        
-        
-        
+                        
         mov dl, 0xff                ;generate 255, the first tested key
         
 do_the_bruteforce:           
         push ecx                    ;save registers use by xor_string
         push esi        
 
-xor_string:                         ;xor string with key byte like
+xor_string:                         ;xor string with key byte
         xor byte[esi], dl 
         inc esi      
         loop xor_string
@@ -441,7 +438,7 @@ xor_string:                         ;xor string with key byte like
         push ecx                                               
         
         push esi                    
-        push ebx
+        push ebx                    ;ebx address of substring ('force')
         call contains               ;eax contains boolean (0 if not found)
         add esp, 8
         
@@ -466,7 +463,7 @@ xor_string_back:                    ;revert xor_string operation
         pop edx
         
         dec dl                                                                                                  
-        test dl, 0xff                ;also test algorithm for 0 key (leave when dl = -1 i.e when dl is back to 255)
+        cmp dl, 0xff                ;also test algorithm for 0 key (leave when dl = -1 i.e when dl is back to 255)
         jnz do_the_bruteforce
         
 found:
@@ -478,8 +475,108 @@ found:
         leave
         ret
 
+;-------------------------------------------------------------------------
+;void decode_vigenere(char *string, *key);
+;-------------------------------------------------------------------------
+;first generate the offset key by extinding key to match sring's key and replacing values with offsets
+;to decode instead of adding the key we substract the key
+;(assuming the string was encoded with the same key)
+;basically we revert the encoding
+;once we have the key, iterate byte by byte and do the string[i] -= key[i]
+;--------------------------------------------------------------------------
 decode_vigenere:
-        ; TODO TASK 6
+                                    ;TODO TASK 6
+        enter 12,0
+        
+        push esi                    ;saved use registers
+        push edi
+        
+        mov esi, [ebp + 8]          ;the string
+        mov ebx, [ebp + 12]         ;the key
+        
+        
+        push esi
+        call strlen                 ;length in eax
+        add esp, 8
+                                    
+        mov [ebp-4], eax            ;string length at [ebp - 4]
+        
+        push ebx
+        call strlen                 ;length in eax  
+        add esp, 4
+        
+        mov [ebp - 8], eax          ;key length at [ebp - 8]
+        
+        mov ecx, [ebp - 4]          ;load string length in ecx
+        
+        sub esp, ecx                ;make room for offset key on stack
+        mov [ebp - 12], esp         ;generated key address at [ebp - 12]
+        mov edi, esp                ;move edi to the offset key adress
+        push ecx                    ;save string length so we can restore stack later
+
+
+        xor edx, edx                ;key index in edx
+        
+        push edi                    ;save registers used by generate_offset_key
+        push esi
+        
+generate_offset_key:                ;load byte from string
+                                    ;if it is not a character store 0 in offset key
+                                    ;else load byte from key, get it's offset and add the offset to offset key
+        
+        lodsb                       ;load byte from string in al
+        
+        cmp al, 'a'                 ;test if byte is character
+        jb not_a_character          ;if it's not a character skip the loading of the key byte
+        cmp al, 'z'
+        jg not_a_character        
+                
+        mov al, byte[ebx + edx]     ;if it is a character load byte from key
+        inc edx                     ;increment key index
+        cmp [ebp-8], edx            ;check if index reached the end of key
+        jnz not_the_end_of_key
+        xor edx, edx                ;index reached the end of key string, move it to the beginning
+not_the_end_of_key:
+               
+        sub al, 'a'                 ;sub 'a' to get the offset
+        jmp continue                ;skip the xor
+        
+not_a_character:
+        xor al, al                  ;set offset to 0       
+continue:
+        stosb                       ;store offset in edi        
+        loop generate_offset_key
+        
+        pop esi                     ;string address in esi
+        pop ebx                     ;key address now in ebx
+        mov ecx, [ebp - 4]          ;string length in ecx
+        mov edi, esi                ;move edi to esi so we can quickly store al
+        
+                     
+do_the_decoding:
+        lodsb                       ;load the byte from key
+        cmp al, 'a'                 ;check if character
+        jb store                    ;if not character just store it
+        
+        cmp al, 'z'                 ;even though offset is 0 i still check
+        jg store                    ;because al might fell outside alphabet 
+                                    ;and i need to add 26 to put it back
+                                    ;and the non charcaters will break
+        sub al, byte[ebx]           ;decode here
+        cmp al, 'a'                 ;check if al fell outside alphabet
+        jge store                      
+        add al, 26                  ;add 26, the number of characters       
+store:   
+        inc ebx                     ;increment key address
+        stosb        
+        loop do_the_decoding               
+        
+        pop ecx                     ;get string length
+        add esp, ecx                ;restore stack (cover offset key space)
+        pop edi                     ;restore used registers
+        pop esi
+        
+        leave
         ret
 
 main:
@@ -588,11 +685,12 @@ task2:
 task3:
                                     ;TASK 3: XORing strings represented as hex strings
         
+                                    ;compute key address as ecx adress + strlen(ecx) + 1
         mov ebx, ecx                ;save in ebx because strlen shouldn't modify it
         push ecx                    ;save adress and send as param        
         call strlen                 ;length in eax
         
-        add ebx, eax                ;compute key address as base + length + 1 (1 from 00) 
+        add ebx, eax                ;compute key address as base + length + 1 (1 from 00 byte) 
         inc ebx
              
                                     ;ecx already on stack
@@ -651,7 +749,7 @@ task6:
         pop ecx
     
         add eax, ecx
-        inc eax
+        inc eax       
     
         push eax
         push ecx                   ;ecx = address of input string 
